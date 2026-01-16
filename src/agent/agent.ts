@@ -24,6 +24,18 @@ interface RawExtractedTask {
   confidence: number;
 }
 
+// Type guard to validate task objects from Claude response
+function isValidTask(task: unknown): task is RawExtractedTask {
+  if (typeof task !== 'object' || task === null) return false;
+  const t = task as Record<string, unknown>;
+  return (
+    typeof t.title === 'string' &&
+    typeof t.assigneeName === 'string' &&
+    typeof t.confidence === 'number' &&
+    typeof t.description === 'string'
+  );
+}
+
 let anthropicClient: Anthropic | null = null;
 
 function getAnthropicClient(): Anthropic {
@@ -153,7 +165,9 @@ async function extractTasks(transcriptContent: string): Promise<RawExtractedTask
     if (!jsonMatch) {
       return [];
     }
-    return JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isValidTask);
   } catch {
     console.error('Failed to parse task extraction response');
     return [];
