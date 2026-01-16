@@ -1,7 +1,5 @@
 // src/agent/tools/teams.ts
-import { Client } from '@microsoft/microsoft-graph-client';
-import 'isomorphic-fetch';
-import { getAccessToken } from '../../auth/oauth.js';
+import { getGraphClient } from '../../utils/graphClient.js';
 import type { ReviewTask } from '../../types/index.js';
 import { getEnvVar } from '../../config/settings.js';
 
@@ -11,16 +9,6 @@ function escapeHtml(text: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
-}
-
-async function getGraphClient(): Promise<Client> {
-  const accessToken = await getAccessToken();
-
-  return Client.init({
-    authProvider: (done) => {
-      done(null, accessToken);
-    }
-  });
 }
 
 export async function sendReviewMessage(

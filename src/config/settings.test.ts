@@ -1,6 +1,6 @@
 // src/config/settings.test.ts
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { loadConfig, getConfig, validateConfig } from './settings.js';
+import { describe, it, expect, afterEach } from 'vitest';
+import { loadConfig, validateConfig } from './settings.js';
 import { writeFileSync, unlinkSync, existsSync } from 'fs';
 
 describe('settings', () => {

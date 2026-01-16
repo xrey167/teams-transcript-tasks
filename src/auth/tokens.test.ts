@@ -1,5 +1,5 @@
 // src/auth/tokens.test.ts
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { saveTokens, loadTokens, clearTokens, isTokenExpired, getTokenExpiryDate } from './tokens.js';
 import { unlinkSync, existsSync, writeFileSync } from 'fs';
 

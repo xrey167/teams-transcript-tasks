@@ -13,9 +13,9 @@ Automated workflow that processes Microsoft Teams meeting transcripts and create
 
 ## Setup
 
-### 1. Azure AD App Registration
+### 1. Microsoft Entra ID App Registration
 
-1. Go to [Azure Portal](https://portal.azure.com) → Azure Active Directory → App registrations
+1. Go to [Azure Portal](https://portal.azure.com) → Microsoft Entra ID → App registrations
 2. Create new registration
 3. Add redirect URI: `http://localhost:3333/callback` (Web)
 4. Under API permissions, add:

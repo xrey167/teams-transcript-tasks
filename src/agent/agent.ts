@@ -103,16 +103,20 @@ export async function processTranscript(
 
   // Auto-create high confidence tasks
   let created = 0;
+
+  // Look up oversight person once before the loop
+  const oversightResults = await searchDirectory(config.oversightPerson);
+  const oversightUser = oversightResults.length > 0 ? oversightResults[0] : null;
+
   for (const task of highConfidence) {
     try {
-      await createTaskInPlanner(task, meeting);
+      await createTaskInPlanner(task, meeting, oversightUser);
       created++;
 
-      // Notify oversight person - need to look up their user ID
-      const oversightResults = await searchDirectory(config.oversightPerson);
-      if (oversightResults.length > 0) {
+      // Notify oversight person
+      if (oversightUser) {
         await sendTaskCreatedNotification(
-          oversightResults[0].id,
+          oversightUser.id,
           task.title,
           task.assigneeName,
           meeting.subject
@@ -225,10 +229,9 @@ async function matchPerson(
 
 async function createTaskInPlanner(
   task: ExtractedTask,
-  meeting: Meeting
+  meeting: Meeting,
+  oversightUser: GraphUser | null
 ): Promise<void> {
-  const config = getConfig();
-
   // Find the user to get their plan
   const directoryResults = await searchDirectory(task.assigneeEmail || task.assigneeName);
   if (directoryResults.length === 0) {
@@ -245,10 +248,9 @@ async function createTaskInPlanner(
     assigneeIds.push(meeting.organizer.id);
   }
 
-  // Get oversight person ID
-  const oversightResults = await searchDirectory(config.oversightPerson);
-  if (oversightResults.length > 0 && !assigneeIds.includes(oversightResults[0].id)) {
-    assigneeIds.push(oversightResults[0].id);
+  // Add oversight person if provided
+  if (oversightUser && !assigneeIds.includes(oversightUser.id)) {
+    assigneeIds.push(oversightUser.id);
   }
 
   // Create the task

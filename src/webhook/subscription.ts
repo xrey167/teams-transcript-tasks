@@ -1,20 +1,8 @@
 // src/webhook/subscription.ts
-import { Client } from '@microsoft/microsoft-graph-client';
-import 'isomorphic-fetch';
-import { getAccessToken } from '../auth/oauth.js';
+import { getGraphClient } from '../utils/graphClient.js';
 import type { WebhookSubscription } from '../types/index.js';
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'transcript-webhook-secret';
-
-async function getGraphClient(): Promise<Client> {
-  const accessToken = await getAccessToken();
-
-  return Client.init({
-    authProvider: (done) => {
-      done(null, accessToken);
-    }
-  });
-}
 
 export async function createTranscriptSubscription(
   notificationUrl: string

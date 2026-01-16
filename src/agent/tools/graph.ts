@@ -1,27 +1,11 @@
 // src/agent/tools/graph.ts
-import { Client } from '@microsoft/microsoft-graph-client';
-import 'isomorphic-fetch';
-import { getAccessToken } from '../../auth/oauth.js';
+import { getGraphClient } from '../../utils/graphClient.js';
 import type {
   MeetingTranscript,
   Meeting,
   MeetingParticipant,
   GraphUser
 } from '../../types/index.js';
-
-let graphClient: Client | null = null;
-
-async function getGraphClient(): Promise<Client> {
-  const accessToken = await getAccessToken();
-
-  graphClient = Client.init({
-    authProvider: (done) => {
-      done(null, accessToken);
-    }
-  });
-
-  return graphClient;
-}
 
 export async function getTranscript(meetingId: string, transcriptId: string): Promise<MeetingTranscript> {
   const client = await getGraphClient();

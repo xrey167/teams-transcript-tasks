@@ -2,7 +2,6 @@
 import {
   PublicClientApplication,
   Configuration,
-  AuthenticationResult,
   InteractionRequiredAuthError
 } from '@azure/msal-node';
 import { saveTokens, loadTokens, isTokenExpired } from './tokens.js';
