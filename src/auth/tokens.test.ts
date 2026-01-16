@@ -1,7 +1,7 @@
 // src/auth/tokens.test.ts
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { saveTokens, loadTokens, clearTokens, isTokenExpired } from './tokens.js';
-import { unlinkSync, existsSync } from 'fs';
+import { saveTokens, loadTokens, clearTokens, isTokenExpired, getTokenExpiryDate } from './tokens.js';
+import { unlinkSync, existsSync, writeFileSync } from 'fs';
 
 describe('tokens', () => {
   const testPath = './test-tokens.json';
@@ -57,5 +57,37 @@ describe('tokens', () => {
     clearTokens(testPath);
 
     expect(existsSync(testPath)).toBe(false);
+  });
+
+  it('returns token expiry date', () => {
+    const expiresAt = Date.now() + 3600000;
+    const tokens = {
+      accessToken: 'test',
+      refreshToken: 'test',
+      expiresAt
+    };
+
+    const expiryDate = getTokenExpiryDate(tokens);
+
+    expect(expiryDate).toBeInstanceOf(Date);
+    expect(expiryDate.getTime()).toBe(expiresAt);
+  });
+
+  it('returns null for invalid token structure', () => {
+    // Missing accessToken
+    writeFileSync(testPath, JSON.stringify({ refreshToken: 'test', expiresAt: 123 }));
+    expect(loadTokens(testPath)).toBeNull();
+
+    // Missing refreshToken
+    writeFileSync(testPath, JSON.stringify({ accessToken: 'test', expiresAt: 123 }));
+    expect(loadTokens(testPath)).toBeNull();
+
+    // Missing expiresAt
+    writeFileSync(testPath, JSON.stringify({ accessToken: 'test', refreshToken: 'test' }));
+    expect(loadTokens(testPath)).toBeNull();
+
+    // Wrong types
+    writeFileSync(testPath, JSON.stringify({ accessToken: 123, refreshToken: 'test', expiresAt: 123 }));
+    expect(loadTokens(testPath)).toBeNull();
   });
 });

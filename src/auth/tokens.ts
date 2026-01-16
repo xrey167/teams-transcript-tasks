@@ -15,7 +15,18 @@ export function loadTokens(path: string = DEFAULT_TOKEN_PATH): TokenCache | null
 
   try {
     const raw = readFileSync(path, 'utf-8');
-    return JSON.parse(raw) as TokenCache;
+    const parsed = JSON.parse(raw);
+
+    // Validate required fields exist
+    if (
+      typeof parsed.accessToken !== 'string' ||
+      typeof parsed.refreshToken !== 'string' ||
+      typeof parsed.expiresAt !== 'number'
+    ) {
+      return null;
+    }
+
+    return parsed as TokenCache;
   } catch {
     return null;
   }
