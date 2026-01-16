@@ -20,27 +20,32 @@ export function createWebhookRouter(): Router {
       return;
     }
 
-    // Handle notification
-    try {
-      const notifications = req.body.value as GraphWebhookNotification[];
+    // Validate request body
+    const notifications = req.body?.value;
+    if (!Array.isArray(notifications)) {
+      console.warn('Invalid webhook payload');
+      res.status(400).send('Invalid request body');
+      return;
+    }
 
-      // Respond immediately to Graph
-      res.status(202).send();
+    // Respond immediately to Graph
+    res.status(202).send();
 
-      // Process notifications asynchronously
-      for (const notification of notifications) {
+    // Process notifications asynchronously (after response sent)
+    setImmediate(async () => {
+      for (const notification of notifications as GraphWebhookNotification[]) {
         // Verify client state
         if (notification.clientState !== WEBHOOK_SECRET) {
           console.warn('Invalid client state in notification');
           continue;
         }
-
-        await handleTranscriptNotification(notification);
+        try {
+          await handleTranscriptNotification(notification);
+        } catch (error) {
+          console.error('Error processing notification:', error);
+        }
       }
-    } catch (error) {
-      console.error('Error processing webhook:', error);
-      res.status(500).send();
-    }
+    });
   });
 
   // Health check
