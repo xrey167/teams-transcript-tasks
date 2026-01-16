@@ -19,6 +19,11 @@ const SCOPES = [
   'offline_access'
 ];
 
+// Token expiry fallback: 1 hour in milliseconds
+const TOKEN_EXPIRY_FALLBACK_MS = 3600000;
+// Auth timeout: 5 minutes in milliseconds
+const AUTH_TIMEOUT_MS = 300000;
+
 let msalClient: PublicClientApplication | null = null;
 
 function getMsalConfig(): Configuration {
@@ -74,8 +79,8 @@ async function refreshAccessToken(refreshToken: string): Promise<TokenCache> {
 
   const tokens: TokenCache = {
     accessToken: result.accessToken,
-    refreshToken: result.account?.homeAccountId ? refreshToken : refreshToken,
-    expiresAt: result.expiresOn?.getTime() || Date.now() + 3600000
+    refreshToken: refreshToken,
+    expiresAt: result.expiresOn?.getTime() || Date.now() + TOKEN_EXPIRY_FALLBACK_MS
   };
 
   saveTokens(tokens);
@@ -111,7 +116,7 @@ export async function startAuthFlow(): Promise<string> {
   const tokens: TokenCache = {
     accessToken: result.accessToken,
     refreshToken: (result as any).refreshToken || '',
-    expiresAt: result.expiresOn?.getTime() || Date.now() + 3600000
+    expiresAt: result.expiresOn?.getTime() || Date.now() + TOKEN_EXPIRY_FALLBACK_MS
   };
 
   saveTokens(tokens);
@@ -157,6 +162,6 @@ function waitForAuthCode(redirectUri: string): Promise<string> {
     setTimeout(() => {
       server.close();
       reject(new Error('Authentication timeout'));
-    }, 300000); // 5 minute timeout
+    }, AUTH_TIMEOUT_MS);
   });
 }
