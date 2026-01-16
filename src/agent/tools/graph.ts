@@ -84,9 +84,16 @@ export async function getMeetingParticipants(meetingId: string): Promise<Meeting
 export async function searchDirectory(query: string): Promise<GraphUser[]> {
   const client = await getGraphClient();
 
+  // Sanitize input: trim whitespace and escape single quotes for OData
+  const sanitizedQuery = query.trim().replace(/'/g, "''");
+
+  if (sanitizedQuery.length < 1) {
+    return [];
+  }
+
   const result = await client
     .api('/users')
-    .filter(`startswith(displayName,'${query}') or startswith(mail,'${query}')`)
+    .filter(`startswith(displayName,'${sanitizedQuery}') or startswith(mail,'${sanitizedQuery}')`)
     .select('id,displayName,mail,userPrincipalName')
     .top(10)
     .get();
