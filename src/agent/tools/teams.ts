@@ -37,8 +37,44 @@ export async function sendReviewMessage(
 
 async function getOrCreateChat(userId: string): Promise<{ id: string }> {
   const client = await getGraphClient();
+  const myUserId = getEnvVar('MY_USER_ID');
 
-  // Try to create a 1:1 chat
+  // Handle self-chat case (same user twice is invalid for oneOnOne)
+  if (userId === myUserId) {
+    // For self-chat, we need to find an existing chat or use a workaround
+    // Microsoft Graph doesn't support creating oneOnOne with same user twice
+    // Instead, list existing chats and find one we can use, or create a group chat
+    const existingChats = await client
+      .api('/me/chats')
+      .filter("chatType eq 'oneOnOne'")
+      .top(1)
+      .get();
+
+    if (existingChats.value && existingChats.value.length > 0) {
+      // Use the first available chat (self-messages will appear here)
+      return { id: existingChats.value[0].id };
+    }
+
+    // If no existing chats, create a group chat with just self
+    // This serves as a "notes to self" chat
+    const selfChat = await client
+      .api('/chats')
+      .post({
+        chatType: 'group',
+        topic: 'Task Review Notes',
+        members: [
+          {
+            '@odata.type': '#microsoft.graph.aadUserConversationMember',
+            roles: ['owner'],
+            'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${myUserId}`
+          }
+        ]
+      });
+
+    return { id: selfChat.id };
+  }
+
+  // Try to create a 1:1 chat (Graph returns existing chat if already exists)
   const chat = await client
     .api('/chats')
     .post({
@@ -47,7 +83,7 @@ async function getOrCreateChat(userId: string): Promise<{ id: string }> {
         {
           '@odata.type': '#microsoft.graph.aadUserConversationMember',
           roles: ['owner'],
-          'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${getEnvVar('MY_USER_ID')}`
+          'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${myUserId}`
         },
         {
           '@odata.type': '#microsoft.graph.aadUserConversationMember',

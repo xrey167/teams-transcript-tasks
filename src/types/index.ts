@@ -65,7 +65,6 @@ export interface ExtractedTask {
   meetingContext: {
     meetingId: string;
     meetingSubject: string;
-    transcriptExcerpt: string;
   };
 }
 

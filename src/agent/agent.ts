@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getEnvVar, getConfig } from '../config/settings.js';
 import { TASK_EXTRACTION_PROMPT } from './prompts.js';
 import { getTranscript, getMeetingParticipants, searchDirectory } from './tools/graph.js';
-import { createTask, getOrCreatePersonalPlan } from './tools/planner.js';
+import { createTask, getPersonalPlan } from './tools/planner.js';
 import { sendReviewMessage, sendTaskCreatedNotification } from './tools/teams.js';
 import { isHighConfidence } from '../config/rules.js';
 import type {
@@ -81,8 +81,7 @@ export async function processTranscript(
       ...rawTask,
       meetingContext: {
         meetingId,
-        meetingSubject: meeting.subject,
-        transcriptExcerpt: ''
+        meetingSubject: meeting.subject
       }
     };
 
@@ -101,30 +100,43 @@ export async function processTranscript(
     }
   }
 
-  // Auto-create high confidence tasks
+  // Auto-create high confidence tasks (only if enabled in config)
   let created = 0;
 
-  // Look up oversight person once before the loop
-  const oversightResults = await searchDirectory(config.oversightPerson);
-  const oversightUser = oversightResults.length > 0 ? oversightResults[0] : null;
+  if (config.autoCreateHighConfidence && highConfidence.length > 0) {
+    // Look up oversight person once before the loop
+    const oversightResults = await searchDirectory(config.oversightPerson);
+    const oversightUser = oversightResults.length > 0 ? oversightResults[0] : null;
 
-  for (const task of highConfidence) {
-    try {
-      await createTaskInPlanner(task, meeting, oversightUser);
-      created++;
+    for (const task of highConfidence) {
+      try {
+        await createTaskInPlanner(task, meeting, oversightUser);
+        created++;
 
-      // Notify oversight person
-      if (oversightUser) {
-        await sendTaskCreatedNotification(
-          oversightUser.id,
-          task.title,
-          task.assigneeName,
-          meeting.subject
-        );
+        // Notify oversight person
+        if (oversightUser) {
+          await sendTaskCreatedNotification(
+            oversightUser.id,
+            task.title,
+            task.assigneeName,
+            meeting.subject
+          );
+        }
+      } catch (error) {
+        console.error(`Failed to create task: ${task.title}`, error);
+        // Move to review queue
+        needsReview.push({
+          ...task,
+          id: crypto.randomUUID(),
+          suggestedAssignees: [],
+          status: 'pending'
+        });
       }
-    } catch (error) {
-      console.error(`Failed to create task: ${task.title}`, error);
-      // Move to review queue
+    }
+  } else if (highConfidence.length > 0) {
+    // Auto-create disabled, move all high-confidence tasks to review queue
+    console.log('Auto-create disabled, sending all tasks to review');
+    for (const task of highConfidence) {
       needsReview.push({
         ...task,
         id: crypto.randomUUID(),
@@ -239,7 +251,7 @@ async function createTaskInPlanner(
   }
 
   const assignee = directoryResults[0];
-  const plan = await getOrCreatePersonalPlan(assignee.id, assignee.displayName);
+  const plan = await getPersonalPlan(assignee.id, assignee.displayName);
 
   // Build assignee list: task owner + meeting organizer + oversight person
   const assigneeIds = [assignee.id];

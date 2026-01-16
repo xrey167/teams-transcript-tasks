@@ -88,7 +88,7 @@ async function refreshAccessToken(refreshToken: string): Promise<TokenCache> {
 
 export async function startAuthFlow(): Promise<string> {
   const client = getMsalClient();
-  const redirectUri = 'http://localhost:3333/callback';
+  const redirectUri = process.env.OAUTH_REDIRECT_URI || 'http://localhost:3333/callback';
 
   const authUrl = await client.getAuthCodeUrl({
     scopes: SCOPES,

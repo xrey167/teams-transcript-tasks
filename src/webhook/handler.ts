@@ -2,9 +2,11 @@
 import { Router, Request, Response } from 'express';
 import { processTranscript } from '../agent/agent.js';
 import { getMeetingDetails } from '../agent/tools/graph.js';
+import { getEnvVar } from '../config/settings.js';
 import type { GraphWebhookNotification } from '../types/index.js';
 
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'transcript-webhook-secret';
+// Enforce WEBHOOK_SECRET via environment variable (no insecure default)
+const WEBHOOK_SECRET = getEnvVar('WEBHOOK_SECRET');
 
 export function createWebhookRouter(): Router {
   const router = Router();

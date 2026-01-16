@@ -16,22 +16,27 @@ export async function getUserPlans(userId: string): Promise<PlannerPlan[]> {
   }));
 }
 
-export async function getOrCreatePersonalPlan(userId: string, userDisplayName: string): Promise<PlannerPlan> {
+/**
+ * Gets a user's personal plan for task assignment.
+ * Looks for a plan named "{displayName}'s Tasks" first, then falls back to first available plan.
+ * Note: Plan creation is not supported (requires Microsoft 365 Group creation).
+ */
+export async function getPersonalPlan(userId: string, userDisplayName: string): Promise<PlannerPlan> {
   const plans = await getUserPlans(userId);
   const personalPlanTitle = `${userDisplayName}'s Tasks`;
 
+  // Look for personal tasks plan first
   const existing = plans.find(p => p.title === personalPlanTitle);
   if (existing) {
     return existing;
   }
 
-  // Create new personal plan - this requires a Group, which is complex
-  // For now, return the first available plan or throw
+  // Fall back to first available plan
   if (plans.length > 0) {
     return plans[0];
   }
 
-  throw new Error(`No Planner plans found for user ${userId}. Please create a plan first.`);
+  throw new Error(`No Planner plans found for user ${userId}. Please create a plan in Microsoft Planner first.`);
 }
 
 export async function getPlanBuckets(planId: string): Promise<Array<{ id: string; name: string }>> {

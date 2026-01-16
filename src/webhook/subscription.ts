@@ -1,8 +1,10 @@
 // src/webhook/subscription.ts
 import { getGraphClient } from '../utils/graphClient.js';
+import { getEnvVar } from '../config/settings.js';
 import type { WebhookSubscription } from '../types/index.js';
 
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'transcript-webhook-secret';
+// Enforce WEBHOOK_SECRET via environment variable (no insecure default)
+const WEBHOOK_SECRET = getEnvVar('WEBHOOK_SECRET');
 
 export async function createTranscriptSubscription(
   notificationUrl: string
