@@ -1,0 +1,30 @@
+{
+  "name": "teams-transcript-tasks",
+  "version": "1.0.0",
+  "description": "Automated meeting transcript to Planner tasks workflow",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "type": "module",
+  "keywords": ["teams", "planner", "claude", "agent"],
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@azure/msal-node": "^2.16.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "express": "^4.21.0",
+    "isomorphic-fetch": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
