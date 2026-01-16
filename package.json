@@ -18,7 +18,8 @@
     "@azure/msal-node": "^2.16.0",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "express": "^4.21.0",
-    "isomorphic-fetch": "^3.0.0"
+    "isomorphic-fetch": "^3.0.0",
+    "ngrok": "^5.0.0-beta.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
