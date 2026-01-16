@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:setup": "tsx src/test-setup.ts"
   },
   "type": "module",
   "keywords": ["teams", "planner", "claude", "agent"],
