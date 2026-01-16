@@ -12,6 +12,9 @@ import { getAccessToken } from './auth/oauth.js';
 
 const PORT = parseInt(process.env.PORT || '3000');
 
+// Store ngrok reference for cleanup
+let ngrokUrl: string | null = null;
+
 async function main() {
   console.log('=== Teams Transcript Tasks Agent ===\n');
 
@@ -55,18 +58,29 @@ async function main() {
   });
 
   // Set up ngrok tunnel
-  const ngrokUrl = await startNgrokTunnel(PORT);
+  ngrokUrl = await startNgrokTunnel(PORT);
   console.log(`✓ Ngrok tunnel: ${ngrokUrl}`);
 
   // Manage webhook subscription
   await setupWebhookSubscription(ngrokUrl);
 
   // Handle graceful shutdown
-  process.on('SIGINT', async () => {
+  async function shutdown() {
     console.log('\n\nShutting down...');
+
+    // Close ngrok tunnel
+    if (ngrokUrl) {
+      const ngrok = await import('ngrok');
+      await ngrok.default.disconnect();
+      console.log('Ngrok tunnel closed');
+    }
+
     server.close();
     process.exit(0);
-  });
+  }
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 
   console.log('\n=== Ready to process transcripts ===\n');
 }
@@ -108,4 +122,7 @@ async function setupWebhookSubscription(baseUrl: string): Promise<void> {
   console.log('✓ Webhook subscription active');
 }
 
-main().catch(console.error);
+main().catch(error => {
+  console.error('Fatal error:', error);
+  process.exit(1);
+});
