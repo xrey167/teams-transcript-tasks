@@ -1,15 +1,81 @@
 # Teams Transcript Tasks Agent
 
-Automated workflow that processes Microsoft Teams meeting transcripts and creates tasks in Microsoft Planner.
+An intelligent automation agent that processes Microsoft Teams meeting transcripts and automatically creates tasks in Microsoft Planner using Claude AI.
+
+## Overview
+
+This agent listens for new meeting transcripts via Microsoft Graph webhooks, extracts action items using Claude AI, and creates tasks in Microsoft Planner with smart assignee matching. Tasks with high confidence are created automatically, while uncertain ones are sent to Teams chat for manual review.
 
 ## Features
 
-- Automatically triggered when meeting transcripts are ready
-- AI-powered task extraction using Claude
-- Smart person matching (meeting participants → directory)
-- High-confidence tasks auto-created in Planner
-- Uncertain tasks sent to Teams chat for review
-- Role-based task visibility (assignee + organizer + oversight person)
+- **Real-time Transcript Processing** - Automatically triggered when Teams meeting transcripts are ready via Graph webhooks
+- **AI-Powered Task Extraction** - Uses Claude AI to intelligently identify action items, deadlines, and assignees from natural conversation
+- **Confidence-Based Workflow** - High-confidence tasks (configurable threshold) are auto-created; uncertain tasks go to review queue
+- **Smart Person Matching** - Matches names from transcripts to actual users via meeting participants and directory search
+- **Role-Based Task Assignment** - Tasks are visible to assignee, meeting organizer, and configurable oversight person
+- **Teams Chat Integration** - Sends uncertain tasks to your Teams chat for approval/rejection
+- **Configurable Rules** - Define patterns to ignore ("just thinking out loud") or always include ("action item")
+
+## Architecture
+
+```
+┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
+│  Microsoft      │     │   Webhook    │     │    Claude AI    │
+│  Graph API      │────▶│   Handler    │────▶│  Task Extraction│
+│  (Transcripts)  │     │  (Express)   │     │                 │
+└─────────────────┘     └──────────────┘     └────────┬────────┘
+                                                       │
+                        ┌──────────────────────────────┴──────────────────────────────┐
+                        │                                                              │
+                        ▼                                                              ▼
+              ┌─────────────────┐                                           ┌─────────────────┐
+              │ High Confidence │                                           │  Low Confidence │
+              │     Tasks       │                                           │     Tasks       │
+              └────────┬────────┘                                           └────────┬────────┘
+                       │                                                              │
+                       ▼                                                              ▼
+              ┌─────────────────┐                                           ┌─────────────────┐
+              │ Microsoft       │                                           │   Teams Chat    │
+              │ Planner         │                                           │   Review Queue  │
+              │ (Auto-create)   │                                           │                 │
+              └─────────────────┘                                           └─────────────────┘
+```
+
+## Project Structure
+
+```
+src/
+├── index.ts              # Main entry point, Express server, ngrok tunnel
+├── test-setup.ts         # Integration test helper
+├── types/
+│   └── index.ts          # TypeScript interfaces
+├── config/
+│   ├── settings.ts       # Configuration loading and validation
+│   └── rules.ts          # Task filtering rules (ignore/include patterns)
+├── auth/
+│   ├── oauth.ts          # Microsoft OAuth 2.0 flow with MSAL
+│   └── tokens.ts         # Token caching (save/load/refresh)
+├── utils/
+│   └── graphClient.ts    # Shared Microsoft Graph client singleton
+├── agent/
+│   ├── agent.ts          # Core agent logic: extract, match, create tasks
+│   ├── prompts.ts        # Claude AI prompts for task extraction
+│   └── tools/
+│       ├── graph.ts      # Graph API: transcripts, meetings, users
+│       ├── planner.ts    # Planner API: plans, tasks, assignments
+│       └── teams.ts      # Teams API: chat messages, notifications
+└── webhook/
+    ├── handler.ts        # Webhook endpoint for transcript notifications
+    └── subscription.ts   # Webhook subscription management
+```
+
+## Prerequisites
+
+- Node.js 18+
+- Microsoft 365 tenant with Teams
+- Azure AD app registration
+- Claude API key
+- ngrok account (for webhook tunneling)
 
 ## Setup
 
@@ -17,68 +83,213 @@ Automated workflow that processes Microsoft Teams meeting transcripts and create
 
 1. Go to [Azure Portal](https://portal.azure.com) → Microsoft Entra ID → App registrations
 2. Create new registration
-3. Add redirect URI: `http://localhost:3333/callback` (Web)
-4. Under API permissions, add:
-   - `OnlineMeetingTranscript.Read.All`
-   - `User.Read.All`
-   - `Tasks.ReadWrite`
-   - `Chat.ReadWrite`
-5. Grant admin consent
-6. Create a client secret and note it down
+3. Add redirect URI: `http://localhost:3333/callback` (Web platform)
+4. Under **API permissions**, add these delegated permissions:
+   - `OnlineMeetingTranscript.Read.All` - Read meeting transcripts
+   - `User.Read.All` - Search user directory
+   - `Tasks.ReadWrite` - Create Planner tasks
+   - `Chat.ReadWrite` - Send Teams messages
+5. Grant admin consent for your organization
+6. Note your **Application (client) ID** and **Directory (tenant) ID**
 
-### 2. Configuration
+### 2. Environment Configuration
 
-Copy `.env.example` to `.env` and fill in:
+Copy `.env.example` to `.env` and configure:
 
-```
+```env
+# Azure AD App Registration
 AZURE_CLIENT_ID=your-app-client-id
-AZURE_CLIENT_SECRET=your-client-secret
 AZURE_TENANT_ID=your-tenant-id
+
+# Claude API
 ANTHROPIC_API_KEY=your-claude-api-key
+
+# Server Configuration
+PORT=3000
 NGROK_AUTHTOKEN=your-ngrok-token
+
+# User Configuration
 OVERSIGHT_PERSON_EMAIL=manager@company.com
 MY_USER_ID=your-microsoft-user-id
 ```
 
-Edit `config.json` to customize:
-- `oversightPerson`: Email of person to CC on all tasks
-- `confidenceThreshold`: Auto-create tasks above this confidence (0.8 default)
-- `rules`: Patterns for task detection
+**Finding your Microsoft User ID:**
+```bash
+# After authentication, you can use Graph Explorer or:
+curl -H "Authorization: Bearer <token>" https://graph.microsoft.com/v1.0/me
+```
 
-### 3. Install & Run
+### 3. Task Rules Configuration
+
+Edit `config.json` to customize task detection:
+
+```json
+{
+  "oversightPerson": "manager@company.com",
+  "confidenceThreshold": 0.8,
+  "autoCreateHighConfidence": true,
+  "rules": {
+    "ignorePatterns": [
+      "just thinking out loud",
+      "maybe we should",
+      "I wonder if"
+    ],
+    "alwaysInclude": [
+      "action item",
+      "todo",
+      "task",
+      "follow up",
+      "will do",
+      "by friday"
+    ]
+  }
+}
+```
+
+| Option | Description |
+|--------|-------------|
+| `oversightPerson` | Email of person CC'd on all tasks |
+| `confidenceThreshold` | Tasks above this score are auto-created (0.0-1.0) |
+| `autoCreateHighConfidence` | Enable/disable automatic task creation |
+| `rules.ignorePatterns` | Phrases that indicate non-actionable discussion |
+| `rules.alwaysInclude` | Phrases that strongly indicate a real task |
+
+### 4. Install & Run
 
 ```bash
+# Install dependencies
 npm install
+
+# Build TypeScript
 npm run build
+
+# Start the agent
 npm start
 ```
 
 On first run, you'll be prompted to authenticate via browser.
 
-### 4. Test Setup
+### 5. Verify Setup
 
 ```bash
 npm run test:setup
 ```
 
-This verifies authentication, Graph API access, and Planner connectivity.
+This verifies:
+- Microsoft authentication works
+- Graph API access is configured
+- Planner connectivity is active
 
 ## Usage
 
 Once running, the agent will:
-1. Listen for new meeting transcripts via Graph webhooks
-2. Automatically process transcripts and extract tasks
-3. Create high-confidence tasks in Planner
-4. Send uncertain tasks to your Teams chat for approval
 
-## Architecture
+1. **Listen** for new meeting transcripts via Graph webhooks
+2. **Process** transcripts automatically when they become available
+3. **Extract** tasks using Claude AI with confidence scoring
+4. **Create** high-confidence tasks directly in the assignee's Planner
+5. **Queue** uncertain tasks for review in your Teams chat
 
-See `docs/plans/2026-01-16-meeting-tasks-agent-design.md` for full architecture documentation.
+### Example Console Output
+
+```
+=== Teams Transcript Tasks Agent ===
+
+✓ Configuration loaded
+✓ Environment variables validated
+
+Authenticating with Microsoft...
+✓ Microsoft authentication successful
+
+✓ Server listening on port 3000
+✓ Ngrok tunnel: https://abc123.ngrok.io
+✓ Webhook subscription active
+
+=== Ready to process transcripts ===
+
+[Webhook] New transcript notification received
+[Agent] Processing transcript for "Weekly Team Standup"
+[Agent] Found 3 potential tasks
+[Agent] Task 1: "Send Q4 report to stakeholders" → Created (confidence: 0.95)
+[Agent] Task 2: "Review PR #123" → Created (confidence: 0.88)
+[Agent] Task 3: "Maybe look into caching" → Queued for review (confidence: 0.45)
+```
 
 ## Development
 
 ```bash
-npm run dev      # Watch mode
-npm run test     # Run tests
-npm run build    # Compile TypeScript
+# Watch mode (auto-reload on changes)
+npm run dev
+
+# Run tests
+npm test
+
+# Run tests once
+npm run test:run
+
+# Build for production
+npm run build
 ```
+
+## API Reference
+
+### Task Extraction Response
+
+Claude AI returns tasks in this format:
+
+```json
+[
+  {
+    "title": "Send Q4 report to stakeholders",
+    "assigneeName": "John",
+    "dueDate": "2026-01-20",
+    "description": "Compile and send the Q4 financial report before the board meeting",
+    "confidence": 0.95
+  }
+]
+```
+
+### Confidence Scoring
+
+| Score | Meaning | Action |
+|-------|---------|--------|
+| 0.9-1.0 | Explicit assignment with clear owner | Auto-create |
+| 0.7-0.8 | Clear task with implied owner | Auto-create (if above threshold) |
+| 0.5-0.6 | Vague task or unclear owner | Review queue |
+| < 0.5 | Speculation or discussion | Review queue |
+
+## Troubleshooting
+
+### Authentication Issues
+
+```bash
+# Clear cached tokens and re-authenticate
+rm .tokens.json
+npm start
+```
+
+### Webhook Not Receiving Events
+
+1. Verify ngrok tunnel is running
+2. Check webhook subscription status in Microsoft Graph Explorer
+3. Ensure `OnlineMeetingTranscript.Read.All` permission is granted
+
+### Tasks Not Created
+
+1. Verify Planner plans exist for assignees
+2. Check `Tasks.ReadWrite` permission is granted
+3. Review confidence threshold in `config.json`
+
+## Tech Stack
+
+- **Runtime**: Node.js with TypeScript (ES Modules)
+- **AI**: Claude API via `@anthropic-ai/sdk`
+- **Auth**: MSAL Node (`@azure/msal-node`)
+- **APIs**: Microsoft Graph Client
+- **Server**: Express.js
+- **Tunneling**: ngrok
+- **Testing**: Vitest
+
+## License
+
+MIT
