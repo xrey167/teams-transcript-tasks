@@ -5,6 +5,14 @@ import { getAccessToken } from '../../auth/oauth.js';
 import type { ReviewTask } from '../../types/index.js';
 import { getEnvVar } from '../../config/settings.js';
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 async function getGraphClient(): Promise<Client> {
   const accessToken = await getAccessToken();
 
@@ -70,21 +78,21 @@ function formatReviewMessage(meetingSubject: string, tasks: ReviewTask[]): strin
     day: 'numeric'
   });
 
-  let html = `<b>Meeting Task Review (${meetingSubject} - ${date})</b><br><br>`;
+  let html = `<b>📋 Meeting Task Review (${escapeHtml(meetingSubject)} - ${date})</b><br><br>`;
   html += `<b>Uncertain tasks found:</b><br><br>`;
 
   tasks.forEach((task, index) => {
-    html += `<b>${index + 1}. "${task.title}"</b><br>`;
+    html += `<b>${index + 1}. "${escapeHtml(task.title)}"</b><br>`;
 
     if (task.suggestedAssignees.length > 0) {
       const top = task.suggestedAssignees[0];
-      html += `-> Suggested assignee: ${top.user.displayName} (${Math.round(top.confidence * 100)}% match)<br>`;
+      html += `-> Suggested assignee: ${escapeHtml(top.user.displayName)} (${Math.round(top.confidence * 100)}% match)<br>`;
     } else {
       html += `-> Assignee unclear<br>`;
     }
 
     if (task.dueDate) {
-      html += `-> Due: ${task.dueDate}<br>`;
+      html += `-> Due: ${escapeHtml(task.dueDate)}<br>`;
     } else {
       html += `-> Due: Not mentioned<br>`;
     }
@@ -121,6 +129,6 @@ export async function sendTaskCreatedNotification(
   assigneeName: string,
   meetingSubject: string
 ): Promise<void> {
-  const message = `Task created from "${meetingSubject}": "${taskTitle}" assigned to ${assigneeName}`;
+  const message = `✅ Task created from "${escapeHtml(meetingSubject)}": "${escapeHtml(taskTitle)}" assigned to ${escapeHtml(assigneeName)}`;
   await sendNotification(recipientUserId, message);
 }
