@@ -72,6 +72,10 @@ src/
 ## Prerequisites
 
 - Node.js 18+
+- Microsoft 365 tenant with Teams
+- Azure AD app registration
+- Claude API key
+- ngrok account (for webhook tunneling)
 - Microsoft 365 tenant with Teams and Planner licenses
 - Microsoft Entra ID (Azure AD) tenant admin access
 - Claude API account
@@ -90,6 +94,10 @@ src/
 
 ### 1. Microsoft Entra ID App Registration
 
+1. Go to [Azure Portal](https://portal.azure.com) → Microsoft Entra ID → App registrations
+2. Create new registration
+3. Add redirect URI: `http://localhost:3333/callback` (Web platform)
+4. Under **API permissions**, add these delegated permissions:
 > **Note:** You need tenant admin access to grant API permissions.
 
 1. Go to [Azure Portal](https://portal.azure.com) → **Microsoft Entra ID** → **App registrations**
@@ -105,6 +113,10 @@ src/
    - `User.Read.All` - Search user directory
    - `Tasks.ReadWrite` - Create Planner tasks
    - `Chat.ReadWrite` - Send Teams messages
+5. Grant admin consent for your organization
+6. Note your **Application (client) ID** and **Directory (tenant) ID**
+
+### 2. Environment Configuration
    - `offline_access` - Refresh tokens
 5. Click **Grant admin consent for [Your Organization]**
 
@@ -157,6 +169,15 @@ OAUTH_REDIRECT_URI=http://localhost:3333/callback
 # User Configuration
 OVERSIGHT_PERSON_EMAIL=manager@company.com
 MY_USER_ID=your-microsoft-user-id
+```
+
+**Finding your Microsoft User ID:**
+```bash
+# After authentication, you can use Graph Explorer or:
+curl -H "Authorization: Bearer <token>" https://graph.microsoft.com/v1.0/me
+```
+
+### 3. Task Rules Configuration
 
 # Security
 WEBHOOK_SECRET=your-random-webhook-secret
@@ -214,7 +235,7 @@ npm start
 
 On first run, you'll be prompted to authenticate via browser.
 
-### 8. Verify Setup
+### 5. Verify Setup
 
 ```bash
 npm run test:setup

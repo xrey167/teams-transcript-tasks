@@ -1,0 +1,25 @@
+{
+  "oversightPerson": "manager@company.com",
+  "confidenceThreshold": 0.8,
+  "autoCreateHighConfidence": true,
+  "rules": {
+    "ignorePatterns": [
+      "just thinking out loud",
+      "maybe we should",
+      "I wonder if",
+      "what if we"
+    ],
+    "alwaysInclude": [
+      "action item",
+      "todo",
+      "task",
+      "follow up",
+      "will do",
+      "please do",
+      "can you",
+      "by friday",
+      "by monday",
+      "by end of"
+    ]
+  }
+}
