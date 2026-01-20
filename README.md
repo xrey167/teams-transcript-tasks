@@ -76,6 +76,19 @@ src/
 - Azure AD app registration
 - Claude API key
 - ngrok account (for webhook tunneling)
+- Microsoft 365 tenant with Teams and Planner licenses
+- Microsoft Entra ID (Azure AD) tenant admin access
+- Claude API account
+- ngrok account (free tier works)
+
+## Required Registrations & API Keys
+
+| Service | What You Need | Where to Get It |
+|---------|--------------|-----------------|
+| Microsoft Entra ID | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` | [Azure Portal](https://portal.azure.com) |
+| Anthropic | `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) |
+| ngrok | `NGROK_AUTHTOKEN` | [dashboard.ngrok.com](https://dashboard.ngrok.com/get-started/your-authtoken) |
+| Microsoft Graph | `MY_USER_ID` | Graph Explorer or `/me` endpoint |
 
 ## Setup
 
@@ -85,6 +98,17 @@ src/
 2. Create new registration
 3. Add redirect URI: `http://localhost:3333/callback` (Web platform)
 4. Under **API permissions**, add these delegated permissions:
+> **Note:** You need tenant admin access to grant API permissions.
+
+1. Go to [Azure Portal](https://portal.azure.com) → **Microsoft Entra ID** → **App registrations**
+2. Click **New registration**
+   - Name: `Teams Transcript Tasks Agent`
+   - Supported account types: **Single tenant** (your org only)
+   - Redirect URI: Select **Web** and enter `http://localhost:3333/callback`
+3. After creation, note:
+   - **Application (client) ID** → This is your `AZURE_CLIENT_ID`
+   - **Directory (tenant) ID** → This is your `AZURE_TENANT_ID`
+4. Go to **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated permissions**
    - `OnlineMeetingTranscript.Read.All` - Read meeting transcripts
    - `User.Read.All` - Search user directory
    - `Tasks.ReadWrite` - Create Planner tasks
@@ -93,6 +117,39 @@ src/
 6. Note your **Application (client) ID** and **Directory (tenant) ID**
 
 ### 2. Environment Configuration
+   - `offline_access` - Refresh tokens
+5. Click **Grant admin consent for [Your Organization]**
+
+### 2. Claude API Key
+
+1. Go to [console.anthropic.com](https://console.anthropic.com)
+2. Sign up or log in
+3. Navigate to **API Keys**
+4. Create a new API key
+5. Copy the key → This is your `ANTHROPIC_API_KEY`
+
+### 3. ngrok Auth Token
+
+1. Go to [ngrok.com](https://ngrok.com) and create a free account
+2. After login, go to [Your Authtoken](https://dashboard.ngrok.com/get-started/your-authtoken)
+3. Copy the token → This is your `NGROK_AUTHTOKEN`
+
+### 4. Your Microsoft User ID
+
+After completing the app registration, you need your Microsoft Graph user ID:
+
+**Option A: Using Graph Explorer**
+1. Go to [Graph Explorer](https://developer.microsoft.com/en-us/graph/graph-explorer)
+2. Sign in with your Microsoft account
+3. Run: `GET https://graph.microsoft.com/v1.0/me`
+4. Copy the `id` field → This is your `MY_USER_ID`
+
+**Option B: Using curl (after first authentication)**
+```bash
+curl -H "Authorization: Bearer <your-token>" https://graph.microsoft.com/v1.0/me | jq .id
+```
+
+### 5. Environment Configuration
 
 Copy `.env.example` to `.env` and configure:
 
@@ -107,6 +164,7 @@ ANTHROPIC_API_KEY=your-claude-api-key
 # Server Configuration
 PORT=3000
 NGROK_AUTHTOKEN=your-ngrok-token
+OAUTH_REDIRECT_URI=http://localhost:3333/callback
 
 # User Configuration
 OVERSIGHT_PERSON_EMAIL=manager@company.com
@@ -120,6 +178,14 @@ curl -H "Authorization: Bearer <token>" https://graph.microsoft.com/v1.0/me
 ```
 
 ### 3. Task Rules Configuration
+
+# Security
+WEBHOOK_SECRET=your-random-webhook-secret
+```
+
+> **Tip:** Generate a secure `WEBHOOK_SECRET` with: `openssl rand -hex 32`
+
+### 6. Task Rules Configuration
 
 Edit `config.json` to customize task detection:
 
@@ -154,7 +220,7 @@ Edit `config.json` to customize task detection:
 | `rules.ignorePatterns` | Phrases that indicate non-actionable discussion |
 | `rules.alwaysInclude` | Phrases that strongly indicate a real task |
 
-### 4. Install & Run
+### 7. Install & Run
 
 ```bash
 # Install dependencies
