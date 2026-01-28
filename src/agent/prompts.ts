@@ -24,7 +24,7 @@ Example output:
   {
     "title": "Send Q4 report to stakeholders",
     "assigneeName": "John",
-    "dueDate": "next Friday",
+    "dueDate": "2026-01-20",
     "description": "Compile and send the Q4 financial report to all stakeholders before the board meeting",
     "confidence": 0.95
   }
